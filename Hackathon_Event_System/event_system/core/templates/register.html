@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EventHub — Register</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'style.css' %}"/>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-primary shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="{% url 'home' %}"><i class="bi bi-calendar-event me-2"></i>EventHub</a>
+  </div>
+</nav>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <div class="card-header bg-primary text-white py-4 text-center">
+          <i class="bi bi-person-plus-fill fs-2 mb-2 d-block"></i>
+          <h3 class="fw-bold mb-0">Event Registration</h3>
+          <p class="mb-0 opacity-75 small">Fill in your details to join an event</p>
+        </div>
+        <div class="card-body p-4">
+
+          {% if errors %}
+          <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Please fix the following:</strong>
+            <ul class="mb-0 mt-1">
+              {% for field, msg in errors.items %}
+              <li>{{ msg }}</li>
+              {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+          {% endif %}
+
+          <form method="post" action="{% url 'register' %}" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-4">
+              <label for="student_id" class="form-label fw-semibold">Student ID</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-card-heading text-primary"></i></span>
+                <input type="text" class="form-control {% if errors.student_id %}is-invalid{% endif %}"
+                       id="student_id" name="student_id" placeholder="e.g. 100123"
+                       value="{{ form_data.student_id|default:'' }}" required/>
+                {% if errors.student_id %}<div class="invalid-feedback">{{ errors.student_id }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label for="name" class="form-label fw-semibold">Full Name</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-person text-primary"></i></span>
+                <input type="text" class="form-control {% if errors.name %}is-invalid{% endif %}"
+                       id="name" name="name" placeholder="e.g. Jane Smith"
+                       value="{{ form_data.name|default:'' }}" required/>
+                {% if errors.name %}<div class="invalid-feedback">{{ errors.name }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label for="email" class="form-label fw-semibold">Email Address</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-envelope text-primary"></i></span>
+                <input type="email" class="form-control {% if errors.email %}is-invalid{% endif %}"
+                       id="email" name="email" placeholder="e.g. jane@example.com"
+                       value="{{ form_data.email|default:'' }}" required/>
+                {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
+              </div>
+              <div class="form-text">Each email can only be registered once.</div>
+            </div>
+
+            <div class="mb-4">
+              <label for="event" class="form-label fw-semibold">Select Event</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-calendar2-check text-primary"></i></span>
+                <select class="form-select {% if errors.event %}is-invalid{% endif %}" id="event" name="event" required>
+                  <option value="" disabled {% if not form_data.event %}selected{% endif %}>— Choose an event —</option>
+                  {% for ev in events %}
+                  <option value="{{ ev.id }}" {% if form_data.event == ev.id|stringformat:"s" %}selected{% endif %}>
+                    {{ ev.name }}
+                  </option>
+                  {% endfor %}
+                </select>
+                {% if errors.event %}<div class="invalid-feedback">{{ errors.event }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-grid mt-3">
+              <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                <i class="bi bi-send-fill me-2"></i>Register & Get QR Code
+              </button>
+            </div>
+          </form>
+
+        </div>
+        <div class="card-footer bg-white text-center py-3 text-muted small">
+          Already registered? <a href="{% url 'verify' %}">Verify your certificate</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

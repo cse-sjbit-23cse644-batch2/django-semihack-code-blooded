@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8" />
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0"/>
+
+<title>EventHub — Home</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+rel="stylesheet"/>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+rel="stylesheet"/>
+
+{% load static %}
+
+<link rel="stylesheet"
+href="{% static 'style.css' %}"/>
+
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+
+<div class="container">
+
+<a class="navbar-brand fw-bold fs-4"
+href="{% url 'home' %}">
+
+<i class="bi bi-calendar-event me-2"></i>
+
+EventHub
+
+</a>
+
+<div class="ms-auto d-flex gap-2">
+{% if request.user.is_staff %}
+  <a href="/leaderboard/" class="btn btn-warning btn-sm">🏆 Leaderboard</a>
+  <a href="/scan/" class="btn btn-outline-light btn-sm">📷 Scan QR</a>
+  <a href="/admin-dashboard/" class="btn btn-light btn-sm">⚙️ Admin Dashboard</a>
+  <a href="/logout/" class="btn btn-danger btn-sm">🚪 Logout</a>
+{% elif request.session.participant_id %}
+  <a href="{% url 'certificate' request.session.participant_id %}" class="btn btn-warning btn-sm">🎓 My Dashboard</a>
+  <a href="/leaderboard/" class="btn btn-outline-light btn-sm">🏆 Leaderboard</a>
+  <a href="/verify/" class="btn btn-outline-light btn-sm">🔍 Verify</a>
+  <a href="/logout/" class="btn btn-danger btn-sm">🚪 Logout</a>
+{% else %}
+  <a href="{% url 'register' %}" class="btn btn-light btn-sm">Register</a>
+  <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm fw-semibold">Student Login</a>
+{% endif %}
+</div>
+
+</div>
+
+</nav>
+
+<!-- HERO -->
+
+<section class="hero-section text-white text-center py-5">
+
+<div class="container py-3">
+
+<h1 class="display-4 fw-bold mb-3">
+
+Welcome to
+<span class="text-warning">
+
+EventHub
+
+</span>
+
+</h1>
+
+<p class="lead mb-4">
+
+Register for competitive events,
+track attendance,
+and earn certificates.
+
+</p>
+
+<div class="d-flex justify-content-center gap-3">
+{% if not request.user.is_staff and not request.session.participant_id %}
+<a href="{% url 'register' %}" class="btn btn-warning btn-lg fw-bold px-4 shadow">
+<i class="bi bi-person-plus me-2"></i> Register Now
+</a>
+<a href="{% url 'login' %}" class="btn btn-outline-light btn-lg fw-bold px-4 shadow">
+<i class="bi bi-box-arrow-in-right me-2"></i> Login
+</a>
+{% elif request.session.participant_id %}
+<a href="{% url 'certificate' request.session.participant_id %}" class="btn btn-warning btn-lg fw-bold px-4 shadow">
+<i class="bi bi-mortarboard-fill me-2"></i> My Dashboard
+</a>
+{% elif request.user.is_staff %}
+<a href="/admin-dashboard/" class="btn btn-warning btn-lg fw-bold px-4 shadow">
+<i class="bi bi-gear-fill me-2"></i> Admin Dashboard
+</a>
+{% endif %}
+</div>
+
+</div>
+
+</section>
+
+<!-- STATS -->
+
+<section class="py-4 bg-light border-bottom">
+
+<div class="container">
+
+<div class="row text-center g-3">
+
+<!-- Events -->
+
+<div class="col-6 col-md-3">
+
+<div class="stat-card p-3 rounded bg-white shadow-sm">
+
+<div class="fs-2 fw-bold text-primary">
+
+{{ events.count }}
+
+</div>
+
+<div class="text-muted small">
+
+Active Events
+
+</div>
+
+</div>
+
+</div>
+
+<!-- Registrations -->
+
+<div class="col-6 col-md-3">
+
+<div class="stat-card p-3 rounded bg-white shadow-sm">
+
+<div class="fs-2 fw-bold text-success">
+
+{{ total_participants }}
+
+</div>
+
+<div class="text-muted small">
+
+Registrations
+
+</div>
+
+</div>
+
+</div>
+
+<!-- Attended -->
+
+<div class="col-6 col-md-3">
+
+<div class="stat-card p-3 rounded bg-white shadow-sm">
+
+<div class="fs-2 fw-bold text-warning">
+
+{{ attended }}
+
+</div>
+
+<div class="text-muted small">
+
+Attended
+
+</div>
+
+</div>
+
+</div>
+
+<!-- Certificates -->
+
+<div class="col-6 col-md-3">
+
+<div class="stat-card p-3 rounded bg-white shadow-sm">
+
+<div class="fs-2 fw-bold text-danger">
+{{ certificates_issued }}
+<i class="bi bi-patch-check-fill fs-4 ms-1"></i>
+</div>
+
+<div class="text-muted small">
+
+Certificates Issued
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<!-- EVENTS -->
+
+<section class="py-5">
+
+<div class="container">
+
+<h2 class="fw-bold mb-4 text-center">
+
+Available Events
+
+</h2>
+
+<div class="row g-4 justify-content-center">
+
+{% for event in events %}
+
+<div class="col-md-6 col-lg-3">
+
+<div class="event-card card h-100 shadow-sm border-0 text-center p-3">
+
+<div class="event-icon mb-3">
+
+{% if 'hack' in event.name|lower %}
+
+<i class="bi bi-cpu-fill text-primary fs-1"></i>
+
+{% elif 'quiz' in event.name|lower %}
+
+<i class="bi bi-question-circle-fill text-warning fs-1"></i>
+
+{% elif 'cod' in event.name|lower %}
+
+<i class="bi bi-code-slash text-success fs-1"></i>
+
+{% else %}
+
+<i class="bi bi-bug-fill text-danger fs-1"></i>
+
+{% endif %}
+
+</div>
+
+<h5 class="fw-bold">
+
+{{ event.name }}
+
+</h5>
+
+<p class="text-muted small">
+
+{{ event.participants.count }}
+
+participant{{ event.participants.count|pluralize }}
+
+</p>
+
+<a href="{% url 'register' %}?event={{ event.id }}"
+class="btn btn-primary btn-sm mt-auto">
+
+Register →
+
+</a>
+
+</div>
+
+</div>
+
+{% empty %}
+
+<div class="col-12 text-center text-muted">
+
+<i class="bi bi-calendar-x fs-1"></i>
+
+<p class="mt-2">
+
+No events yet.
+
+</p>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+</div>
+
+</section>
+
+<!-- FOOTER -->
+
+<footer class="bg-dark text-white text-center py-3 mt-auto">
+
+<div class="container">
+
+<small>
+
+© 2025 EventHub · Built with Django ·
+
+<a href="{% url 'verify' %}"
+class="text-warning">
+
+Verify Certificate
+
+</a>
+
+</small>
+
+</div>
+
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script src="{% static 'script.js' %}"></script>
+
+</body>
+
+</html>

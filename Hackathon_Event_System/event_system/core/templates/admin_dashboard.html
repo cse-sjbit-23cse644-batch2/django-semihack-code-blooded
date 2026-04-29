@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>⚙️ Admin Dashboard</h2>
+        <p class="text-muted">Manage participant attendance.</p>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col d-flex justify-content-end">
+        <div class="btn-group" role="group" aria-label="Filter Participants">
+            <button type="button" class="btn btn-outline-primary active" id="filter-all">All ({{ participants|length }})</button>
+            <button type="button" class="btn btn-outline-success" id="filter-attended">Attended</button>
+            <button type="button" class="btn btn-outline-secondary" id="filter-not-attended">Not Attended</button>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Event</th>
+                        <th>Registered At</th>
+                        <th>Score</th>
+                        <th>Attended</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in participants %}
+                    <tr class="participant-row" data-attended="{% if p.attended %}true{% else %}false{% endif %}">
+                        <td>{{ p.student_id|default:"-" }}</td>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.email }}</td>
+                        <td>{{ p.event.name }}</td>
+                        <td>{{ p.registered_at|date:"M d, Y H:i" }}</td>
+                        <td class="d-flex align-items-center">
+                            <input type="number" class="form-control form-control-sm score-input" 
+                                   data-participant-id="{{ p.id }}" 
+                                   value="{{ p.score|default_if_none:'' }}" 
+                                   min="0" max="100" style="width: 70px;">
+                            <span id="score-saved-{{ p.id }}" class="text-success small ms-2" style="display: none;"><i class="bi bi-check-circle-fill"></i></span>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input attendance-toggle" type="checkbox" role="switch" 
+                                       data-participant-id="{{ p.id }}" 
+                                       {% if p.attended %}checked{% endif %}>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">No participants registered yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggles = document.querySelectorAll('.attendance-toggle');
+    const rows = document.querySelectorAll('.participant-row');
+    const btnAll = document.getElementById('filter-all');
+    const btnAttended = document.getElementById('filter-attended');
+    const btnNotAttended = document.getElementById('filter-not-attended');
+
+    function updateCounts() {
+        let attended = 0;
+        let notAttended = 0;
+        rows.forEach(row => {
+            if (row.getAttribute('data-attended') === 'true') attended++;
+            else notAttended++;
+        });
+        btnAttended.textContent = `Attended (${attended})`;
+        btnNotAttended.textContent = `Not Attended (${notAttended})`;
+    }
+    updateCounts();
+
+    function filterRows(filter) {
+        rows.forEach(row => {
+            const isAttended = row.getAttribute('data-attended') === 'true';
+            if (filter === 'all') {
+                row.style.display = '';
+            } else if (filter === 'attended') {
+                row.style.display = isAttended ? '' : 'none';
+            } else if (filter === 'not-attended') {
+                row.style.display = !isAttended ? '' : 'none';
+            }
+        });
+        
+        btnAll.classList.toggle('active', filter === 'all');
+        btnAttended.classList.toggle('active', filter === 'attended');
+        btnNotAttended.classList.toggle('active', filter === 'not-attended');
+    }
+
+    btnAll.addEventListener('click', () => filterRows('all'));
+    btnAttended.addEventListener('click', () => filterRows('attended'));
+    btnNotAttended.addEventListener('click', () => filterRows('not-attended'));
+    
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const participantId = this.getAttribute('data-participant-id');
+            const isChecked = this.checked;
+            
+            fetch('/ajax/toggle-attendance/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    id: participantId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const row = toggle.closest('.participant-row');
+                    row.setAttribute('data-attended', isChecked ? 'true' : 'false');
+                    updateCounts();
+
+                    const activeFilter = document.querySelector('.btn-group .active').id;
+                    if (activeFilter === 'filter-attended' && !isChecked) {
+                        row.style.display = 'none';
+                    } else if (activeFilter === 'filter-not-attended' && isChecked) {
+                        row.style.display = 'none';
+                    }
+                } else {
+                    alert('Error toggling attendance: ' + data.error);
+                    this.checked = !isChecked; // Revert
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error while toggling attendance.');
+                this.checked = !isChecked; // Revert
+            });
+        });
+    });
+
+    // Score manual update logic
+    const scoreInputs = document.querySelectorAll('.score-input');
+    scoreInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const participantId = this.getAttribute('data-participant-id');
+            const scoreVal = this.value;
+            const savedIndicator = document.getElementById('score-saved-' + participantId);
+            
+            fetch('/ajax/update-score/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    id: participantId,
+                    score: scoreVal
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    savedIndicator.style.display = 'inline';
+                    setTimeout(() => {
+                        savedIndicator.style.display = 'none';
+                    }, 2000);
+                } else {
+                    alert('Error saving score: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error while saving score.');
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

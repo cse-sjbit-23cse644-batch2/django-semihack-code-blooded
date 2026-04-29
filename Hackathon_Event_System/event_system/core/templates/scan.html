@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-primary text-white py-4 text-center">
+                <i class="bi bi-camera-video-fill fs-2 mb-2 d-block"></i>
+                <h3 class="fw-bold mb-0">Scan QR Code</h3>
+                <p class="mb-0 opacity-75 small">Point your camera at a participant's QR code</p>
+            </div>
+            <div class="card-body p-4 text-center">
+                
+                <div id="reader" width="600px"></div>
+                
+                <div class="mt-4" id="scan-result" style="display: none;">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>QR Code Detected!</strong> Redirecting...
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function onScanSuccess(decodedText, decodedResult) {
+        // handle the scanned code as you like, for example:
+        console.log(`Code matched = ${decodedText}`, decodedResult);
+        
+        // Hide the scanner and show result
+        document.getElementById('reader').style.display = 'none';
+        document.getElementById('scan-result').style.display = 'block';
+        
+        // Stop scanning
+        html5QrcodeScanner.clear();
+        
+        // If the decoded text is a URL, redirect to it
+        if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+            window.location.href = decodedText;
+        } else {
+            // Alternatively, if it's just the participant ID or relative path
+            alert("Scanned data is not a URL: " + decodedText);
+        }
+    }
+
+    function onScanFailure(error) {
+        // handle scan failure, usually better to ignore and keep scanning.
+        // console.warn(`Code scan error = ${error}`);
+    }
+
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader",
+        { fps: 10, qrbox: {width: 250, height: 250} },
+        /* verbose= */ false);
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+});
+</script>
+{% endblock %}

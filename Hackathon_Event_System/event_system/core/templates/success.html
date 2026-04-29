@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EventHub — Registration Successful</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'style.css' %}"/>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-primary shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="{% url 'home' %}"><i class="bi bi-calendar-event me-2"></i>EventHub</a>
+  </div>
+</nav>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+
+      <div class="card shadow border-0 rounded-4 overflow-hidden">
+        <!-- Success Banner -->
+        <div class="card-header bg-success text-white text-center py-4">
+          <div class="success-checkmark mb-2">
+            <i class="bi bi-check-circle-fill" style="font-size: 3rem;"></i>
+          </div>
+          <h3 class="fw-bold mb-1">Registration Successful!</h3>
+          <p class="mb-0 opacity-75">Welcome aboard, {{ participant.name }}!</p>
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Participant Info -->
+          <div class="info-box rounded-3 p-3 mb-4 bg-light border">
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="text-muted small">Name</div>
+                <div class="fw-semibold">{{ participant.name }}</div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted small">Event</div>
+                <div class="fw-semibold text-primary">{{ participant.event.name }}</div>
+              </div>
+              <div class="col-12">
+                <div class="text-muted small">Email</div>
+                <div class="fw-semibold">{{ participant.email }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div class="text-center mb-4">
+            <p class="fw-semibold text-muted mb-3">
+              <i class="bi bi-qr-code me-1"></i>Your Attendance QR Code
+            </p>
+            {% if participant.qr_code %}
+            <div class="qr-wrapper d-inline-block p-3 bg-white border rounded-3 shadow-sm">
+              <img src="{{ participant.qr_code.url }}" alt="QR Code" class="img-fluid" style="max-width: 200px;"/>
+            </div>
+            <p class="text-muted small mt-3">
+              <i class="bi bi-info-circle me-1"></i>
+              Show this QR code at the event for attendance
+            </p>
+            {% else %}
+            <div class="alert alert-warning">QR code generation in progress...</div>
+            {% endif %}
+          </div>
+
+          <!-- Actions -->
+          <div class="d-grid gap-2">
+            <a href="{% url 'certificate' participant.id %}" class="btn btn-outline-primary">
+              <i class="bi bi-file-earmark-pdf me-2"></i>View Certificate Page
+            </a>
+            <a href="{% url 'register' %}" class="btn btn-outline-secondary">
+              <i class="bi bi-person-plus me-2"></i>Register Another
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-link text-muted">← Back to Home</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
