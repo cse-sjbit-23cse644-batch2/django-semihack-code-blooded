@@ -20,4 +20,5 @@ urlpatterns = [
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('ajax/toggle-attendance/', views.toggle_attendance, name='toggle_attendance'),
     path('ajax/update-score/', views.update_score, name='update_score'),
+    path('ajax/verify-payment/', views.verify_payment, name='verify_payment'),
 ]

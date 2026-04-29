@@ -25,6 +25,9 @@ class Participant(models.Model):
     feedback_submitted = models.BooleanField(default=False)
     feedback_rating = models.IntegerField(null=True, blank=True)
     feedback_comments = models.TextField(null=True, blank=True)
+    transaction_id = models.CharField(max_length=100, blank=True, null=True)
+    transaction_screenshot = models.ImageField(upload_to='transactions/', blank=True, null=True)
+    payment_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} ({self.event.name})"

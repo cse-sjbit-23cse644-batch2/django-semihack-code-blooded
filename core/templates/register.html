@@ -42,7 +42,7 @@
           </div>
           {% endif %}
 
-          <form method="post" action="{% url 'register' %}" novalidate>
+          <form method="post" action="{% url 'register' %}" novalidate enctype="multipart/form-data">
             {% csrf_token %}
 
             <div class="mb-4">
@@ -95,9 +95,30 @@
               </div>
             </div>
 
+            <div class="mb-4">
+              <label for="transaction_id" class="form-label fw-semibold">Transaction / UPI Reference ID</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-receipt text-primary"></i></span>
+                <input type="text" class="form-control {% if errors.transaction_id %}is-invalid{% endif %}"
+                       id="transaction_id" name="transaction_id" placeholder="e.g. UPI123456789"
+                       value="{{ form_data.transaction_id|default:'' }}" required/>
+                {% if errors.transaction_id %}<div class="invalid-feedback">{{ errors.transaction_id }}</div>{% endif %}
+              </div>
+              <div class="form-text">Enter the transaction/reference ID from your payment.</div>
+            </div>
+
+            <div class="mb-4">
+              <label for="transaction_screenshot" class="form-label fw-semibold">Payment Screenshot <span class="text-muted fw-normal">(optional)</span></label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-image text-primary"></i></span>
+                <input type="file" class="form-control" id="transaction_screenshot" name="transaction_screenshot" accept="image/*"/>
+              </div>
+              <div class="form-text">Upload a screenshot of your payment confirmation.</div>
+            </div>
+
             <div class="d-grid mt-3">
               <button type="submit" class="btn btn-primary btn-lg fw-bold">
-                <i class="bi bi-send-fill me-2"></i>Register & Get QR Code
+                <i class="bi bi-send-fill me-2"></i>Register &amp; Get QR Code
               </button>
             </div>
           </form>

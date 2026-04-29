@@ -105,6 +105,8 @@ def register(request):
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip().lower()
         event_id = request.POST.get('event')
+        transaction_id = request.POST.get('transaction_id', '').strip()
+        transaction_screenshot = request.FILES.get('transaction_screenshot')
 
         errors = {}
         if not student_id:
@@ -115,6 +117,8 @@ def register(request):
             errors['email'] = 'Email is required.'
         if not event_id:
             errors['event'] = 'Please select an event.'
+        if not transaction_id:
+            errors['transaction_id'] = 'Transaction ID is required.'
 
         if not errors:
             if Participant.objects.filter(student_id=student_id).exists():
@@ -126,7 +130,11 @@ def register(request):
             return render(request, 'register.html', {'events': events, 'errors': errors, 'form_data': request.POST})
 
         event = get_object_or_404(Event, pk=event_id)
-        participant = Participant.objects.create(student_id=student_id, name=name, email=email, event=event)
+        participant = Participant.objects.create(
+            student_id=student_id, name=name, email=email, event=event,
+            transaction_id=transaction_id,
+            transaction_screenshot=transaction_screenshot,
+        )
 
         # Generate QR code
         # Generate QR code using local IP so mobile scanning works
@@ -167,6 +175,9 @@ def attendance(request, participant_id):
         participant.save()
         message = 'marked'
 
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'attended': True, 'message': message, 'participant_name': participant.name, 'participant_id': participant.id})
+
     return render(request, 'attendance.html', {'participant': participant, 'message': message})
 
 
@@ -174,16 +185,8 @@ def certificate(request, participant_id):
     participant = get_object_or_404(Participant, pk=participant_id)
 
     if not participant.attended:
-
         return HttpResponse(
             "Attendance required"
-        )
-
-    if not participant.feedback_submitted:
-
-        return redirect(
-            'feedback',
-            participant_id=participant.id
         )
 
     return render(request, 'certificate.html', {'participant': participant})
@@ -234,7 +237,7 @@ def draw_certificate_border(canvas, doc):
 def download_certificate(request, participant_id):
     participant = get_object_or_404(Participant, pk=participant_id)
 
-    if not participant.attended or not participant.feedback_submitted:
+    if not participant.attended:
         raise Http404("Certificate not available.")
 
     buffer = io.BytesIO()
@@ -523,6 +526,20 @@ def update_score(request):
             
             participant.save()
             return JsonResponse({'success': True, 'score': participant.score})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+@admin_required
+def verify_payment(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            participant_id = data.get('id')
+            participant = Participant.objects.get(id=participant_id)
+            participant.payment_verified = True
+            participant.save()
+            return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
     return JsonResponse({'success': False, 'error': 'Invalid request'})

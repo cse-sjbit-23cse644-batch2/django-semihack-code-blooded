@@ -8,8 +8,13 @@
     </div>
 </div>
 
-<div class="row mb-3">
-    <div class="col d-flex justify-content-end">
+<div class="row mb-3 align-items-center">
+    <div class="col-md-6">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#qrScannerModal" id="btn-open-scanner">
+            <i class="bi bi-qr-code-scan me-2"></i>Scan QR Code
+        </button>
+    </div>
+    <div class="col-md-6 d-flex justify-content-end mt-2 mt-md-0">
         <div class="btn-group" role="group" aria-label="Filter Participants">
             <button type="button" class="btn btn-outline-primary active" id="filter-all">All ({{ participants|length }})</button>
             <button type="button" class="btn btn-outline-success" id="filter-attended">Attended</button>
@@ -29,6 +34,8 @@
                         <th>Email</th>
                         <th>Event</th>
                         <th>Registered At</th>
+                        <th>Transaction ID</th>
+                        <th>Payment</th>
                         <th>Score</th>
                         <th>Attended</th>
                     </tr>
@@ -41,6 +48,19 @@
                         <td>{{ p.email }}</td>
                         <td>{{ p.event.name }}</td>
                         <td>{{ p.registered_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <span class="text-monospace small">{{ p.transaction_id|default:"—" }}</span>
+                        </td>
+                        <td>
+                            {% if p.payment_verified %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Verified</span>
+                            {% else %}
+                                {% if p.transaction_screenshot %}
+                                    <a href="{{ p.transaction_screenshot.url }}" target="_blank" class="btn btn-outline-secondary btn-sm me-1"><i class="bi bi-image"></i></a>
+                                {% endif %}
+                                <button class="btn btn-warning btn-sm verify-payment-btn" data-participant-id="{{ p.id }}"><i class="bi bi-shield-check me-1"></i>Verify</button>
+                            {% endif %}
+                        </td>
                         <td class="d-flex align-items-center">
                             <input type="number" class="form-control form-control-sm score-input" 
                                    data-participant-id="{{ p.id }}" 
@@ -66,6 +86,27 @@
         </div>
     </div>
 </div>
+
+<!-- QR Scanner Modal -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="qrScannerModalLabel"><i class="bi bi-camera-fill me-2"></i>Scan Participant QR Code</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" id="btn-close-scanner"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
+                <div id="scanner-feedback" class="mt-3 alert alert-info d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -183,6 +224,116 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error:', error);
                 alert('Network error while saving score.');
             });
+        });
+    });
+
+    // QR Scanner Logic
+    let html5QrcodeScanner = null;
+    const feedbackEl = document.getElementById('scanner-feedback');
+
+    function showFeedback(message, isError = false) {
+        feedbackEl.textContent = message;
+        feedbackEl.className = `mt-3 alert ${isError ? 'alert-danger' : 'alert-success'}`;
+        feedbackEl.classList.remove('d-none');
+        setTimeout(() => {
+            feedbackEl.classList.add('d-none');
+        }, 3000);
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        console.log(`Code matched = ${decodedText}`, decodedResult);
+        
+        // Extract participant ID from URL
+        // Expected format: http://.../attendance/ID/
+        let participantId = null;
+        try {
+            const url = new URL(decodedText);
+            const pathParts = url.pathname.split('/').filter(p => p);
+            const attendanceIndex = pathParts.indexOf('attendance');
+            if (attendanceIndex !== -1 && pathParts[attendanceIndex + 1]) {
+                participantId = pathParts[attendanceIndex + 1];
+            }
+        } catch (e) {
+            participantId = decodedText.trim();
+        }
+
+        if (!participantId || isNaN(participantId)) {
+            showFeedback("Invalid QR Code format.", true);
+            return;
+        }
+
+        // Mark attendance via AJAX
+        fetch(`/attendance/${participantId}/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showFeedback(`Attendance marked for ${data.participant_name}!`);
+                
+                // Update the dashboard row
+                const row = document.querySelector(`.attendance-toggle[data-participant-id="${participantId}"]`)?.closest('.participant-row');
+                if (row) {
+                    row.setAttribute('data-attended', 'true');
+                    const toggle = row.querySelector('.attendance-toggle');
+                    if (toggle) toggle.checked = true;
+                    updateCounts();
+                }
+            } else {
+                showFeedback("Error: " + data.error, true);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFeedback("Network error while marking attendance.", true);
+        });
+    }
+
+    const scannerModal = document.getElementById('qrScannerModal');
+    scannerModal.addEventListener('shown.bs.modal', function () {
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "qr-reader",
+                { fps: 10, qrbox: {width: 250, height: 250} },
+                /* verbose= */ false
+            );
+        }
+        html5QrcodeScanner.render(onScanSuccess, (error) => {
+            // Ignore failures
+        });
+    });
+
+    scannerModal.addEventListener('hidden.bs.modal', function () {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear().catch(err => console.error("Failed to clear scanner", err));
+        }
+    });
+
+    // Verify Payment Logic
+    document.querySelectorAll('.verify-payment-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const participantId = this.getAttribute('data-participant-id');
+            const cell = this.closest('td');
+            fetch('/ajax/verify-payment/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ id: participantId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    cell.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Verified</span>';
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(() => alert('Network error while verifying payment.'));
         });
     });
 });
